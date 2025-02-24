@@ -1,0 +1,51 @@
+from typing import Dict, Optional
+
+import os
+import sys
+
+class_path = os.path.join(os.getcwd(), "custom_nodes","ffmpeg-analyzer")
+sys.path.append(class_path)
+from __init__ import ClassImporter 
+importer = ClassImporter()
+importer.class_import(["error_types.py", "nvidia.py", "intel.py"])
+
+class AccelerationManager:
+    PRIORITY = ['cuda', 'qsv', 'vaapi']
+
+    def __init__(self):
+        self.accelerators = {
+            'cuda': CUDAAccelerator(),
+            'qsv': IntelQSVAccelerator()
+        }
+        self.active_accelerator = self._detect_accelerator()
+
+    def _detect_accelerator(self) -> Optional[str]:
+        for hw in self.PRIORITY:
+            if self.accelerators[hw].is_available():
+                return hw
+        return None
+
+    def optimize_command(self, parsed_command: Dict) -> Dict:
+        if not self.active_accelerator:
+            return parsed_command
+        
+        accelerator = self.accelerators[self.active_accelerator]
+        
+        # 优化滤镜链
+        for chain in parsed_command.get("filter_chains", []):
+            chain["filters"] = [
+                accelerator.optimize_filter(f) 
+                for f in chain["filters"]
+                if accelerator.optimize_filter(f) is not None
+            ]
+        
+        # 设置编码器
+        if "outputs" in parsed_command:
+            for output in parsed_command["outputs"]:
+                if "video_codec" in output:
+                    output["video_codec"] = accelerator.video_codec
+        
+        return parsed_command
+
+    def get_current_accelerator(self) -> str:
+        return self.active_accelerator or "software"

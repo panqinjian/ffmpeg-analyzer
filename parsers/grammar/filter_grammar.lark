@@ -1,0 +1,78 @@
+// 完整命令语法定义
+start: command  // 命令的起始规则，定义命令的入口
+
+command: [global_params] inputs filter_complex? outputs  // 定义命令规则，包含全局参数、输入、可选的滤镜复杂链和输出
+
+global_params: global_param+  // 定义全局参数规则，至少一个，全局参数用于设置命令的行为
+
+global_param: "-threads" NUMBER          -> threads  // 线程参数，设置命令执行的线程数
+            | "-hwaccel" IDENT           -> hwaccel  // 硬件加速参数，设置命令使用的硬件加速
+            | "-y"                       -> overwrite  // 覆盖输出文件参数，设置命令是否覆盖输出文件
+            | "-v" "quiet"               -> log_level  // 日志级别参数，设置命令的日志级别
+
+inputs: input+  // 定义输入规则，至少一个输入，输入用于指定命令的输入文件
+
+input: "-i" path  // 输入参数规则，指定输入文件的路径
+
+filter_complex: "-filter_complex" filter_chain  // 定义滤镜复杂链规则，滤镜复杂链用于指定命令的滤镜处理
+
+outputs: output+  // 定义输出规则，至少一个输出，输出用于指定命令的输出文件
+
+output: ["-map" stream_spec] codec_spec? path  // 输出参数规则，包含映射、编码器和路径
+
+stream_spec: "[" IDENT "]"              -> explicit_stream  // 显式流规则，指定输出流的标识符
+           | NUMBER ( ":" "v" | ":" "a" ) -> numbered_stream  // 编号流规则，指定输出流的编号
+
+codec_spec: "-c" ( ":" "v" video_codec | ":" "a" audio_codec )  // 编码器规则，指定输出流的编码器
+
+path: ESCAPED_STRING | FILENAME  // 路径规则，指定输出文件的路径
+
+video_codec: IDENT  // 视频编码器规则，指定视频流的编码器
+
+audio_codec: IDENT  // 音频编码器规则，指定音频流的编码器
+
+filter_chain: filter_group (";" filter_group)*  // 滤镜链规则，滤镜链用于指定命令的滤镜处理
+
+filter_group: filter ("," filter)* [stream_label]  // 滤镜组规则，滤镜组用于指定滤镜的输入和输出
+
+stream_label: "[" IDENT "]"  // 流标签规则，流标签用于指定滤镜的输入和输出流
+
+filter: IDENT "=" filter_params         -> param_filter  // 参数滤镜规则，参数滤镜用于指定滤镜的参数
+      | IDENT                           -> simple_filter  // 简单滤镜规则，简单滤镜用于指定滤镜的名称
+      | scale  # 缩放滤镜规则，缩放滤镜用于缩放视频
+      | crop  # 裁剪滤镜规则，裁剪滤镜用于裁剪视频
+
+scale:  // 定义缩放滤镜的语法规则
+    "scale=" width ":" height (flags)?  // 语法规则，包含宽度、高度和可选的标志
+
+crop:  // 定义裁剪滤镜的语法规则
+    "crop=" width ":" height ":" x ":" y  // 语法规则，包含宽度、高度、起始x和y坐标
+
+width:  // 定义宽度的语法规则
+    /[0-9]+/  // 匹配正整数
+
+height:  // 定义高度的语法规则
+    /[0-9]+/  // 匹配正整数
+
+flags:  // 定义标志的语法规则
+    /[a-zA-Z]+/  // 匹配字母组合
+
+filter_params: param_pair (":" param_pair)*  // 滤镜参数规则，滤镜参数用于指定滤镜的参数
+
+param_pair: IDENT "=" value  // 参数对规则，参数对用于指定滤镜的参数
+
+value: NUMBER | ESCAPED_STRING | EXPR  // 值规则，值用于指定滤镜的参数值
+
+FILENAME: /[^\s"]+/  // 文件名规则，文件名用于指定输入或输出文件的路径
+
+EXPR: /[^:\s"]+/  // 表达式规则，表达式用于指定滤镜的参数值
+
+IDENT: /[a-zA-Z_][\w\.]*/  // 标识符规则，标识符用于指定滤镜的名称或参数
+
+NUMBER: /\d+/  // 数字规则，数字用于指定滤镜的参数值
+
+%import common.ESCAPED_STRING  // 导入转义字符串规则
+
+%import common.WS  // 导入空白字符规则
+
+%ignore WS  // 忽略空白字符

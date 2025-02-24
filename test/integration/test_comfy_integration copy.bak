@@ -1,0 +1,64 @@
+import unittest  # 导入单元测试框架
+
+import os
+import sys
+
+os.environ['DEBUG_MODE'] = 'True'
+os.environ['DEBUG_path'] = 'D:\\AI\\Comfyui_Nvidia\\'
+is_debug_mode = os.getenv('DEBUG_MODE', 'False') == 'True'
+os.chdir('D:\\AI\\Comfyui_Nvidia\\')
+class_path = os.path.join(os.getcwd(), "custom_nodes","ffmpeg-analyzer")
+sys.path.append(class_path)
+from __init__ import ClassImporter 
+importer = ClassImporter()
+importer.class_import(["nodes.py"])
+
+class TestComfyIntegration(unittest.TestCase):  # 定义测试类，继承自unittest.TestCase
+    @classmethod
+    def setUpClass(cls):  # 设置类级别的测试环境
+        cls.test_video = "test_input.mp4"  # 测试视频文件名
+        
+        # 生成测试文件
+        with open(cls.test_video, "wb") as f:  # 创建测试视频文件
+            f.write(b"fake video data")  # 写入伪造的视频数据
+
+    def test_basic_processing(self):  # 测试基本处理
+        node = FFmpegAdvancedProcessing()  # 创建FFmpeg高级处理节点实例
+        result = node.process(  # 处理视频
+            input_path=self.test_video,  # 输入视频路径
+            filter_chain="[0:v]scale=1280:720[output]",  # 滤镜链
+            enable_gpu=False  # 禁用GPU
+        )
+        
+        self.assertIn("output", result[0])  # 验证输出文件名包含“output”
+        self.assertTrue(result[0].endswith(".mp4"))  # 验证输出文件是MP4格式
+
+    def test_gpu_acceleration(self):  # 测试GPU加速
+        node = FFmpegAdvancedProcessing()  # 创建FFmpeg高级处理节点实例
+        result = node.process(  # 处理视频
+            input_path=self.test_video,  # 输入视频路径
+            filter_chain="[0:v]scale=1280:720[output]",  # 滤镜链
+            enable_gpu=True  # 启用GPU
+        )
+        
+        # 验证是否包含GPU编码器
+        self.assertIn("h264_nvenc", result[0])  # 验证输出文件名包含GPU编码器
+
+    def test_error_handling(self):  # 测试错误处理
+        node = FFmpegAdvancedProcessing()  # 创建FFmpeg高级处理节点实例
+        with self.assertRaises(Exception) as ctx:  # 捕获异常
+            node.process(  # 处理视频
+                input_path="nonexistent.mp4",  # 输入不存在的视频文件
+                filter_chain="invalid_filter",  # 无效的滤镜链
+                enable_gpu=True  # 启用GPU
+            )
+        
+        self.assertIn("处理失败", str(ctx.exception))  # 验证异常消息包含“处理失败”
+
+    @classmethod
+    def tearDownClass(cls):  # 清理测试环境
+        import os  # 导入操作系统模块
+        os.remove(cls.test_video)  # 删除测试视频文件
+
+if __name__ == "__main__":  # 程序入口
+    unittest.main()  # 运行单元测试

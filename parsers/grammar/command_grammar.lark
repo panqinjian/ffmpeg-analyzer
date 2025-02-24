@@ -1,0 +1,51 @@
+// FFmpeg命令完整语法规范
+?start: command
+
+command: [global_params] inputs filter_complex? outputs
+
+global_params: global_param+
+global_param: "-threads" NUMBER          -> threads
+            | "-hwaccel" IDENT           -> hwaccel
+            | "-y"                       -> overwrite
+            | "-loglevel" LOG_LEVEL      -> log_level
+            | "-v" "quiet"               -> log_quiet
+
+LOG_LEVEL: "quiet"|"panic"|"fatal"|"error"|"warning"|"info"|"verbose"|"debug"
+
+inputs: input+
+input: "-i" path
+
+filter_complex: "-filter_complex" filter_chain
+
+outputs: output+
+output: ["-map" stream_spec] codec_spec? path
+
+stream_spec: "[" IDENT "]"              -> explicit_stream
+           | NUMBER ( ":" "v" | ":" "a" ) -> numbered_stream
+
+codec_spec: "-c" ( ":" "v" video_codec | ":" "a" audio_codec )
+
+video_codec: IDENT
+audio_codec: IDENT
+
+path: ESCAPED_STRING | FILENAME
+
+filter_chain: filter_group (";" filter_group)*
+filter_group: filter ("," filter)* [stream_label]
+stream_label: "[" IDENT "]"
+
+filter: IDENT "=" filter_params         -> param_filter
+      | IDENT                           -> simple_filter
+
+filter_params: param_pair (":" param_pair)*
+param_pair: IDENT "=" value
+value: NUMBER | ESCAPED_STRING | EXPR
+
+FILENAME: /[^\s"]+/
+EXPR: /[^:\s"]+/
+IDENT: /[a-zA-Z_][\w\.]*/
+NUMBER: /\d+/
+
+%import common.ESCAPED_STRING
+%import common.WS
+%ignore WS
