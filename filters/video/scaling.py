@@ -1,17 +1,8 @@
 from typing import Union
 from dataclasses import dataclass
-import os
-import sys
-
-class_path = os.path.join(os.getcwd(), "custom_nodes","ffmpeg-analyzer")
-sys.path.append(class_path)
-from __init__ import ClassImporter 
-importer = ClassImporter()
-importer.class_import(["filter_registry.py", "error_types.py"])
-from filters.video import *
 from core.error_types import FFmpegError, ErrorLevel
-from filter_registry import FilterRegistry,FilterSpec, get_filter_spec, register_filter
-from filters.video import *
+from filters.filter_registry import FilterRegistry, FilterSpec, get_filter_spec, register_filter
+from enum import Enum
 
 @dataclass
 class ScaleParams:

@@ -1,17 +1,17 @@
-from dataclasses import dataclass
-from typing import Dict, List, Optional, Union
-import inspect
 import os
 import sys
-import subprocess
+import inspect
 
-# 
-class_path = os.path.join(os.getcwd(), "custom_nodes","ffmpeg-analyzer")
-sys.path.append(class_path)
-from __init__ import ClassImporter 
-importer = ClassImporter()
-importer.class_import(["error_types.py", "filter_registry.py"])
+if os.getenv('DEBUG_MODE', 'False') == 'True':
+    os.chdir('D:\\AI\\Comfyui_Nvidia\\')
+    class_path = os.path.join(os.getcwd(), "custom_nodes","comfyui_ffmpeg_deepseek")
+    sys.path.append(class_path)
+    from loader import init_plugins
+    init_plugins()
 
+from dataclasses import dataclass
+from typing import List, Optional, Dict, Callable
+from lexer.filter_lexer import FilterLexer
 from filters.video.format_filter import FormatFilter
 
 @dataclass

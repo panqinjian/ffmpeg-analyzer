@@ -3,18 +3,18 @@ import unittest
 import os
 import sys
 
-os.environ['DEBUG_MODE'] = 'True'
-os.environ['DEBUG_path'] = 'D:\\AI\\Comfyui_Nvidia\\'
-is_debug_mode = os.getenv('DEBUG_MODE', 'False') == 'True'
-os.chdir('D:\\AI\\Comfyui_Nvidia\\')
 
-class_path = os.path.join(os.getcwd(), "custom_nodes","ffmpeg-analyzer")
-sys.path.append(class_path)
-from __init__ import ClassImporter 
-importer = ClassImporter()
-importer.class_import(["error_types.py"])
+if __name__ == "__main__":
+    os.environ['DEBUG_MODE'] = 'True'
+    os.chdir('D:\\AI\\Comfyui_Nvidia\\')
+    class_path = os.path.join(os.getcwd(), "custom_nodes","comfyui_ffmpeg_deepseek")
+    sys.path.append(class_path)
+    from loader import init_plugins
+    init_plugins()
 
-from error_types import FFmpegError, ErrorLevel
+
+
+from core.error_types import FFmpegError, ErrorLevel
 
 class TestErrorTypes(unittest.TestCase):
     def test_error_definition(self):
@@ -40,11 +40,11 @@ class TestErrorTypes(unittest.TestCase):
         )
         expected = "[TEST_ERROR] 测试错误\n建议: 这是一个测试"
         self.assertEqual(str(error), expected)
+        print(error)
 
     def test_error_level_validation(self):
         """测试错误级别验证"""
-        self.assertTrue(ErrorLevel.CRITICAL > ErrorLevel.WARNING)
-        self.assertTrue(ErrorLevel.WARNING > ErrorLevel.INFO)
-
+        self.assertTrue(ErrorLevel.CRITICAL.value > ErrorLevel.WARNING.value)
+        self.assertTrue(ErrorLevel.INFO.value > ErrorLevel.WARNING.value)
 if __name__ == '__main__':
     unittest.main()

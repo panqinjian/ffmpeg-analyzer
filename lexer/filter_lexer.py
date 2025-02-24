@@ -1,13 +1,9 @@
-import re
-from enum import Enum
+from typing import Dict
 import os
 import sys
+import re
+from enum import Enum
 
-class_path = os.path.join(os.getcwd(), "custom_nodes","ffmpeg-analyzer")
-sys.path.append(class_path)
-from __init__ import ClassImporter 
-importer = ClassImporter()
-importer.class_import(["error_types.py"])
 from core.error_types import FFmpegError, ErrorLevel
 
 class FilterTokenType(Enum):
@@ -36,14 +32,10 @@ class FilterLexer:
         (r'=', FilterTokenType.EQUAL),
         (r',', FilterTokenType.COMMA),
         (r':', FilterTokenType.COLON),
-        (r'\\', FilterTokenType.BACKSLASH),
-        (r'\*', FilterTokenType.ASTERISK),
-        r'(?P<string>"(?:[^"\\]|\\.)*")',  # 带转义字符的字符串
+        r'(?P<string>"(?:[^"\\]|\\.)*")',
         (r'(?P<number>-?\d+\.?\d*)', FilterTokenType.NUMBER),
-        (r'(?P<path>[a-zA-Z]:\\(?:[^<>:"/\\|?*\x00-\x1F]+\\)*[^<>:"/\\|?*\x00-\x1F]*)', FilterTokenType.PATH),
-        (r'(?P<expr>(-?[a-zA-Z_][\w\.\+\-\*/:]*))', FilterTokenType.EXPRESSION),
-        (r'-\w+', FilterTokenType.OPTION),
-        (r'(scale|rotate|colorbalance|gblur|eq|colorchannelmixer|volume|amix|hstack)', FilterTokenType.FILTER),
+        # 允许单个字母（如 v/a/s）和复杂表达式
+        (r'(?P<expr>[a-zA-Z0-9_/:\.\+\-]+)', FilterTokenType.EXPRESSION),  
         (r'\s+', None)
     ]
 
@@ -52,6 +44,8 @@ class FilterLexer:
         self.pos = 0
 
     def tokenize(self):
+        if not self.text:
+            return [(FilterTokenType.EOF, "")]
         tokens = []
         token_type = None
         compiled_patterns = [
@@ -61,26 +55,24 @@ class FilterLexer:
         ]
 
         while self.pos < len(self.text):
-            print(f"当前字符: {self.text[self.pos]}")
+            match_found = False
             for regex, token_type in compiled_patterns:
                 match = regex.match(self.text, self.pos)
                 if match:
-                    if token_type:
-                        groups = match.groupdict()
-                        if 'string' in groups and groups['string']:
-                            value = groups['string'][1:-1].replace('\\"', '"')
-                            tokens.append((token_type, value))
-                        elif 'number' in groups and groups['number']:
-                            tokens.append((token_type, float(groups['number'])))
-                        elif 'path' in groups and groups['path']:
-                            tokens.append((token_type, groups['path']))
-                        elif 'expr' in groups and groups['expr']:
-                            tokens.append((token_type, groups['expr']))
-                        else:
-                            tokens.append((token_type, match.group()))
+                    match_found = True
+                    groups = match.groupdict()
+                    if 'string' in groups and groups['string']:
+                        value = groups['string'][1:-1].replace('\\"', '"')
+                        tokens.append((FilterTokenType.STRING, value))
+                    elif 'number' in groups and groups['number']:
+                        tokens.append((FilterTokenType.NUMBER, float(groups['number'])))
+                    elif 'expr' in groups and groups['expr']:
+                        tokens.append((FilterTokenType.EXPRESSION, groups['expr']))
+                    else:
+                        tokens.append((token_type, match.group()))
                     self.pos = match.end()
                     break
-            else:
+            if not match_found:
                 raise FFmpegError(
                     code="LEXER_ERROR",
                     message=f"无法识别的字符: {self.text[self.pos]}",

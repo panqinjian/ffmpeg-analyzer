@@ -1,8 +1,9 @@
+import os
+import sys
+import logging
+import inspect
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Union
-import inspect
-from filters.video import *
-
 
 @dataclass
 class FilterSpec:

@@ -1,4 +1,6 @@
 import unittest
+from core.command_processor import FFmpegCommandProcessor
+from core.error_types import FFmpegError, ErrorLevel
 import tempfile
 
 import os

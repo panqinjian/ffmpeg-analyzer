@@ -3,18 +3,16 @@ import unittest  # 导入unittest模块，用于单元测试
 import os
 import sys
 
-os.environ['DEBUG_MODE'] = 'True'
-os.environ['DEBUG_path'] = 'D:\\AI\\Comfyui_Nvidia\\'
-is_debug_mode = os.getenv('DEBUG_MODE', 'False') == 'True'
-os.chdir('D:\\AI\\Comfyui_Nvidia\\')
 
-class_path = os.path.join(os.getcwd(), "custom_nodes","ffmpeg-analyzer")
-sys.path.append(class_path)
-from __init__ import ClassImporter 
-importer = ClassImporter()
-importer.class_import(["error_types.py", "nvidia.py", "semantic_analyzer.py"])
-from nvidia import CUDAAccelerator
-from error_types import FFmpegError, ErrorLevel
+if __name__ == "__main__":
+    os.environ['DEBUG_MODE'] = 'True'
+    os.chdir('D:\\AI\\Comfyui_Nvidia\\')
+    class_path = os.path.join(os.getcwd(), "custom_nodes","comfyui_ffmpeg_deepseek")
+    sys.path.append(class_path)
+    from loader import init_plugins
+    init_plugins()
+from hardware.nvidia import CUDAAccelerator
+from core.error_types import FFmpegError, ErrorLevel
 
 # 定义测试CUDA加速器的测试类
 class TestCUDAAcceleration(unittest.TestCase):  

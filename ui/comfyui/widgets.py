@@ -1,5 +1,8 @@
 from comfy.ui import widgets
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QCheckBox, QSlider, QLabel
+from typing import Dict, List, Optional
+from core.error_types import FFmpegError, ErrorLevel
+from filters.filter_registry import FilterSpec
 
 class GPUOptionsWidget(QWidget):
     def __init__(self):

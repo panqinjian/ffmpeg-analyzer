@@ -1,13 +1,9 @@
-from typing import Dict, Optional
-
 import os
 import sys
-
-class_path = os.path.join(os.getcwd(), "custom_nodes","ffmpeg-analyzer")
-sys.path.append(class_path)
-from __init__ import ClassImporter 
-importer = ClassImporter()
-importer.class_import(["error_types.py", "nvidia.py", "intel.py"])
+import logging
+import inspect
+from dataclasses import dataclass
+from typing import Dict, List, Optional, Union
 
 class AccelerationManager:
     PRIORITY = ['cuda', 'qsv', 'vaapi']

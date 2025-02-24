@@ -1,14 +1,4 @@
-import subprocess
-import re
 
-import sys
-import os
-
-class_path = os.path.join(os.getcwd(), "custom_nodes","ffmpeg-analyzer")
-sys.path.append(class_path)
-from __init__ import ClassImporter 
-importer = ClassImporter()
-importer.class_import(["error_types.py"])
 
 class IntelQSVAccelerator:
     SUPPORTED_FILTERS = {

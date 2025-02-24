@@ -6,6 +6,8 @@ class ErrorLevel(Enum):
     INFO = 3
 
 class FFmpegError(Exception):
+    def __str__(self):
+        return f"[{self.code}] {self.message}\n建议: {self.suggestion}"
     """FFmpeg命令处理异常基类"""
     def __init__(self, code: str, message: str, suggestion: str, level: ErrorLevel):
         self.code = code

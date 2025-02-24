@@ -1,17 +1,4 @@
 import subprocess
-import sys
-import os
-
-
-class_path = os.path.join(os.getcwd(), "custom_nodes","ffmpeg-analyzer")
-sys.path.append(class_path)
-from __init__ import ClassImporter 
-importer = ClassImporter()
-importer.class_import(["error_types.py"])
-
-#class_path = FileUtils.find_file_path("error_types.py")
-#sys.path.append(class_path)
-#from error_types import FFmpegError, ErrorLevel
 
 
 class CUDAAccelerator:
@@ -35,15 +22,17 @@ class CUDAAccelerator:
         return len(self._devices) > 0
 
     def optimize_filter(self, filter_str: str) -> str:
-        """将滤镜转换为CUDA实现"""
-        name, params = self._parse_filter(filter_str)
-        if spec := self.SUPPORTED_FILTERS.get(name):
-            return f"{spec['impl']}=" + ":".join(
-                f"{spec['params'][k]}={v}" 
-                for k, v in params.items()
-                if k in spec['params']
-            )
-        return None
+        # 处理逻辑，返回正确的滤镜字符串
+        filter_name, params = self._parse_filter(filter_str)
+        if filter_name in self.SUPPORTED_FILTERS:
+            supported_filter = self.SUPPORTED_FILTERS[filter_name]
+            optimized_params = {supported_filter['params'][k]: v for k, v in params.items() if k in supported_filter['params']}
+            optimized_filter_str = f"{supported_filter['impl']}={':'.join(f'{k}={v}' for k, v in optimized_params.items())}"
+            if 'requires' in supported_filter:
+                optimized_filter_str += f",hwaccel={supported_filter['requires'][0].split('=')[1]}"
+            return optimized_filter_str
+        else:
+            return filter_str
 
     def _parse_filter(self, filter_str: str) -> tuple:
         name, param_str = filter_str.split('=', 1) if '=' in filter_str else (filter_str, "")

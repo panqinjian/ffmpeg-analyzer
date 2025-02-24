@@ -4,18 +4,15 @@ import timeit
 import os
 import sys
 
-os.environ['DEBUG_MODE'] = 'True'
-os.environ['DEBUG_path'] = 'D:\\AI\\Comfyui_Nvidia\\'
-is_debug_mode = os.getenv('DEBUG_MODE', 'False') == 'True'
-os.chdir('D:\\AI\\Comfyui_Nvidia\\')
+if __name__ == "__main__":
+    os.environ['DEBUG_MODE'] = 'True'
+    os.chdir('D:\\AI\\Comfyui_Nvidia\\')
+    class_path = os.path.join(os.getcwd(), "custom_nodes","comfyui_ffmpeg_deepseek")
+    sys.path.append(class_path)
+    from loader import init_plugins
+    init_plugins()
 
-class_path = os.path.join(os.getcwd(), "custom_nodes","ffmpeg-analyzer")
-sys.path.append(class_path)
-from __init__ import ClassImporter 
-importer = ClassImporter()
-importer.class_import(["filter_lexer.py"])
-
-from filter_lexer import FilterLexer
+from lexer.filter_lexer import FilterLexer
 
 class TestLexerPerformance(unittest.TestCase):
     def test_small_input_performance(self):

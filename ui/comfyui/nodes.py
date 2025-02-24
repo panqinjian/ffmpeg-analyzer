@@ -1,12 +1,6 @@
-
-
-import os
-import sys
-class_path = os.path.join(os.getcwd(), "custom_nodes","ffmpeg-analyzer")
-sys.path.append(class_path)
-from __init__ import ClassImporter 
-importer = ClassImporter()
-importer.class_import(["command_processor.py"])
+from core.command_processor import FFmpegCommandProcessor
+from core.error_types import FFmpegError, ErrorLevel
+import shlex
 
 class FFmpegProcessingNode:
     @classmethod

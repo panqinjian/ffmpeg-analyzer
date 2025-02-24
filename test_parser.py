@@ -2,13 +2,14 @@ import unittest
 import os
 import sys
 
-os.environ['DEBUG_MODE'] = 'True'
-os.environ['DEBUG_path'] = 'D:\\AI\\Comfyui_Nvidia\\'
-is_debug_mode = os.getenv('DEBUG_MODE', 'False') == 'True'
-os.chdir('D:\\AI\\Comfyui_Nvidia\\')
-
-sys.path.append(os.path.join(os.getcwd(), "custom_nodes","ffmpeg-analyzer"))
-from parsers.lexer.filter_lexer import FilterLexer
+if __name__ == "__main__":
+    os.environ['DEBUG_MODE'] = 'True'
+    os.chdir('D:\\AI\\Comfyui_Nvidia\\')
+    class_path = os.path.join(os.getcwd(), "custom_nodes","comfyui_ffmpeg_deepseek")
+    sys.path.append(class_path)
+    from loader import init_plugins
+    init_plugins()
+from lexer.filter_lexer import FilterLexer
 from parsers.semantic_analyzer import SemanticAnalyzer
 from core.error_types import FFmpegError, ErrorLevel
 

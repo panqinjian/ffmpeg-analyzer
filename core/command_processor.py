@@ -3,15 +3,7 @@ import shlex
 import subprocess
 from pathlib import Path
 from typing import Dict, List, Optional, Union
-import os
-import sys
-import importlib
-
-class_path = os.path.join(os.getcwd(), "custom_nodes","ffmpeg-analyzer")
-sys.path.append(class_path)
-from __init__ import ClassImporter 
-importer = ClassImporter()
-from error_types import FFmpegError, ErrorLevel 
+from core.error_types import FFmpegError, ErrorLevel
 
 class FFmpegCommandProcessor:
     def __init__(self, enable_hw_accel: bool = True):
