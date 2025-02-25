@@ -1,28 +1,62 @@
-from dataclasses import dataclass, field
-from typing import List, Dict, Union
+from typing import List, Dict, Optional, Any
+from dataclasses import dataclass
 
 @dataclass
 class Stream:
-    """表示输入/输出流的标签（如 [0:v], [a1]）"""
-    type: str  # 流类型：v（视频）、a（音频）、s（字幕）等
-    label: str  # 流标签（如 "0:v", "a1", "outv"）
+    id: str
+    type: str  # "video" 或 "audio"
 
 @dataclass
 class FilterNode:
-    """表示一个滤镜节点（如 scale=iw/2:ih/2）"""
-    name: str           # 滤镜名称（如 "scale"）
-    params: Dict[str, str]  # 参数字典（如 {"width": "iw/2", "height": "ih/2"}）
-    inputs: List[Stream]    # 输入流列表（如 [Stream(type="v", label="0:v")]）
-    outputs: List[Stream]   # 输出流列表（如 [Stream(type="v", label="base1")]）
+    name: str
+    params: Dict[str, str]
+    inputs: List[str]
+    outputs: List[str]
+
+@dataclass
+class FilterChain:
+    inputs: List[str]
+    output: str
+    filters: List[Dict[str, any]]
+
+@dataclass
+class ParseError:
+    """解析错误信息"""
+    message: str
+    line: int
+    column: int
+    context: str
+
+@dataclass
+class ParseResult:
+    """解析结果"""
+    success: bool
+    data: Optional[Dict]
+    errors: List[ParseError]
 
 @dataclass
 class ParsedCommand:
-    """表示解析后的 FFmpeg 命令结构"""
-    inputs: List[str]           # 输入文件列表（如 ["input.mp4"]）
-    outputs: List[str]          # 输出文件列表（如 ["output.mp4"]）
-    global_options: Dict[str, str]  # 全局选项（如 {"y": "", "hwaccel": "cuda"}）
-    filter_chains: List[List[FilterNode]]  # 滤镜链列表（每个链是 FilterNode 的列表）
-    
-    def get_filters(self) -> List[FilterNode]:
-        """获取所有滤镜节点（平铺的列表）"""
-        return [node for chain in self.filter_chains for node in chain]
+    """解析后的命令结构"""
+    streams: List[Dict]
+    filter_chains: List[Dict]
+    outputs: List[Dict]
+
+    def to_dict(self) -> Dict:
+        """转换为字典格式"""
+        return {
+            "streams": self.streams,
+            "filter_chains": self.filter_chains,
+            "outputs": self.outputs
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict) -> 'ParsedCommand':
+        """从字典创建实例"""
+        return cls(
+            streams=[Stream(**s) for s in data["streams"]],
+            filter_chains=[FilterChain(**c) for c in data["filter_chains"]],
+            outputs=data["outputs"]
+        )
+
+# 确保导出所有需要的类
+__all__ = ['Stream', 'FilterNode', 'FilterChain', 'ParseError', 'ParseResult', 'ParsedCommand']

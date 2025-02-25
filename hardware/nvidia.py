@@ -1,66 +1,41 @@
-import subprocess
-
+from typing import Dict, Optional
+from core.error_types import FFmpegError, ErrorType
 
 class CUDAAccelerator:
-    SUPPORTED_FILTERS = {
-        'scale': {
-            'impl': 'scale_cuda',
-            'params': {'w': 'width', 'h': 'height'},
-            'requires': ['hwaccel=cuda']
-        },
-        'overlay': {
-            'impl': 'overlay_cuda',
-            'params': {'x': 'x', 'y': 'y'}
-        }
-    }
-
+    """NVIDIA CUDA 加速器"""
+    
     def __init__(self):
-        self._check_driver()
-        self._devices = self._get_cuda_devices()
-
+        self.video_codec = "h264_nvenc"
+        self.device_id = 0
+    
     def is_available(self) -> bool:
-        return len(self._devices) > 0
-
-    def optimize_filter(self, filter_str: str) -> str:
-        # 处理逻辑，返回正确的滤镜字符串
-        filter_name, params = self._parse_filter(filter_str)
-        if filter_name in self.SUPPORTED_FILTERS:
-            supported_filter = self.SUPPORTED_FILTERS[filter_name]
-            optimized_params = {supported_filter['params'][k]: v for k, v in params.items() if k in supported_filter['params']}
-            optimized_filter_str = f"{supported_filter['impl']}={':'.join(f'{k}={v}' for k, v in optimized_params.items())}"
-            if 'requires' in supported_filter:
-                optimized_filter_str += f",hwaccel={supported_filter['requires'][0].split('=')[1]}"
-            return optimized_filter_str
-        else:
-            return filter_str
-
-    def _parse_filter(self, filter_str: str) -> tuple:
-        name, param_str = filter_str.split('=', 1) if '=' in filter_str else (filter_str, "")
-        params = dict(p.split('=') for p in param_str.split(':'))
-        return name.strip(), params
-
-    def _check_driver(self):
+        """检查是否可用CUDA加速"""
         try:
-            subprocess.run(
-                ["nvidia-smi"], 
-                check=True, 
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL
-            )
-        except (subprocess.CalledProcessError, FileNotFoundError):
-            raise FFmpegError(
-                code="CUDA_UNAVAILABLE",
-                message="NVIDIA驱动未安装或不可用",
-                suggestion="安装nvidia-driver和CUDA工具包",
-                level=ErrorLevel.CRITICAL
-            )
-
-    def _get_cuda_devices(self) -> list:
+            import torch
+            return torch.cuda.is_available()
+        except ImportError:
+            return False
+    
+    def optimize_filter(self, filter_def: Dict) -> Optional[Dict]:
+        """优化滤镜配置"""
+        name = filter_def["name"]
+        if name == "scale":
+            filter_def["name"] = "scale_cuda"
+        elif name == "format":
+            filter_def["name"] = "format_cuda"
+        return filter_def
+    
+    def get_device_info(self) -> Dict:
+        """获取设备信息"""
         try:
-            output = subprocess.check_output(
-                ["nvidia-smi", "-L"], 
-                text=True
-            )
-            return [line.split(":")[0] for line in output.strip().split("\n")]
-        except:
-            return []
+            import torch
+            return {
+                "name": torch.cuda.get_device_name(self.device_id),
+                "memory": torch.cuda.get_device_properties(self.device_id).total_memory,
+                "capability": torch.cuda.get_device_capability(self.device_id)
+            }
+        except ImportError:
+            return {}
+
+# 确保导出类
+__all__ = ['CUDAAccelerator']

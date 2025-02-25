@@ -1,4 +1,5 @@
 from enum import Enum
+from typing import Dict, Any
 
 class FilterParamType(Enum):
     STRING = "string"
@@ -7,14 +8,15 @@ class FilterParamType(Enum):
     EXPR = "expr"
 
 # 定义支持的 FFmpeg 滤镜及其参数
-FILTER_DEFINITIONS = {
+FILTER_DEFINITIONS: Dict[str, Dict[str, Any]] = {
     "scale": {
         "description": "缩放视频尺寸",
         "inputs": 1,
         "outputs": 1,
         "parameters": {
             "width": {"type": FilterParamType.EXPR, "required": True},
-            "height": {"type": FilterParamType.EXPR, "required": True}
+            "height": {"type": FilterParamType.EXPR, "required": True},
+            "flags": {"type": FilterParamType.STRING, "required": False}
         }
     },
     "rotate": {
@@ -30,7 +32,7 @@ FILTER_DEFINITIONS = {
         "inputs": 1,
         "outputs": 1,
         "parameters": {
-            "pix_fmts": {"type": FilterParamType.STRING, "required": True}
+            "pix_fmt": {"type": FilterParamType.STRING, "required": True}
         }
     },
     "colorbalance": {
@@ -45,3 +47,6 @@ FILTER_DEFINITIONS = {
     },
     # 其他滤镜...
 }
+
+# 确保导出
+__all__ = ['FILTER_DEFINITIONS']

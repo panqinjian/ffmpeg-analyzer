@@ -1,19 +1,21 @@
 # 核心依赖
-lark-parser>=0.12.0        # 语法解析器
-numpy>=1.21.0            # 数值计算
-opencv-python>=4.5.0     # 视频处理 (仅测试用)
-PyYAML>=6.0              # 配置解析
+ffmpeg-python>=0.2.0
+numpy>=1.19.0
+torch>=1.7.0  # CUDA支持
 
 # 硬件加速支持
 pycuda==2022.1           # NVIDIA CUDA交互 (可选)
 pymfx==0.2.1             # Intel Media SDK封装 (可选)
 
-# ComfyUI集成
-# comfyui>=1.2.0           # ComfyUI核心框架
-PyQt5==5.15.7            # UI组件依赖
-
-# 测试框架
+# 开发依赖
 pytest>=7.0.0            # 单元测试
+pytest-cov>=2.10.0       # 测试覆盖率
 pytest-asyncio>=0.18.0   # 异步测试支持
 parameterized>=0.8.1     # 参数化测试
+
+# UI依赖
+PyQt5==5.15.7            # UI组件依赖
+
+# ComfyUI集成
+# comfyui>=1.2.0           # ComfyUI核心框架
 

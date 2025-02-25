@@ -1,3 +1,11 @@
-from .semantic_analyzer import SemanticAnalyzer  # 从semantic_analyzer模块导入SemanticAnalyzer类
+from .semantic_analyzer import SemanticAnalyzer
+from .parser_models import ParsedCommand, ParseResult
+from .filter_registry import FilterRegistry, get_filter_spec
 
-__all__ = ['SemanticAnalyzer', 'FilterLexer', 'GlobalCommandLexer']  # 定义模块导出内容
+__all__ = [
+    'SemanticAnalyzer',
+    'ParsedCommand',
+    'ParseResult',
+    'FilterRegistry',
+    'get_filter_spec'
+]

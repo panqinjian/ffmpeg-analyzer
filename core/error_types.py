@@ -1,25 +1,34 @@
 from enum import Enum
+from dataclasses import dataclass
+from typing import Optional, Dict, Any
 
 class ErrorLevel(Enum):
-    WARNING = 1
-    CRITICAL = 2
-    INFO = 3
+    WARNING = "WARNING"
+    ERROR = "ERROR"
+    CRITICAL = "CRITICAL"
 
+class ErrorType(Enum):
+    """错误类型常量"""
+    LEXER_ERROR = "LEXER_ERROR"
+    PARSER_ERROR = "PARSER_ERROR"
+    VALIDATION_ERROR = "VALIDATION_ERROR"
+    UNKNOWN_ERROR = "UNKNOWN_ERROR"
+    INVALID_PARAM = "INVALID_PARAM"
+    UNKNOWN_FILTER = "UNKNOWN_FILTER"
+    FORMAT_MISMATCH = "FORMAT_MISMATCH"
+    HW_NOT_SUPPORTED = "HW_NOT_SUPPORTED"
+    SEMANTIC_ERROR = "SEMANTIC_ERROR"
+
+@dataclass
 class FFmpegError(Exception):
-    def __str__(self):
-        return f"[{self.code}] {self.message}\n建议: {self.suggestion}"
-    """FFmpeg命令处理异常基类"""
-    def __init__(self, code: str, message: str, suggestion: str, level: ErrorLevel):
-        self.code = code
-        self.message = message
-        self.suggestion = suggestion
-        self.level = level
-        super().__init__(f"[{code}] {message}")
+    message: str
+    error_type: str = "UNKNOWN_ERROR"
+    suggestion: Optional[str] = None
+    details: Optional[Dict[str, Any]] = None
+    level: str = "ERROR"
 
-    def to_dict(self):
-        return {
-            "code": self.code,
-            "message": self.message,
-            "suggestion": self.suggestion,
-            "level": self.level.name
-        }
+    def __str__(self):
+        return f"{self.error_type}: {self.message}"
+
+# 确保导出类
+__all__ = ['FFmpegError', 'ErrorType']

@@ -1,80 +1,237 @@
 from typing import Dict, List, Optional, Union
-from lexer.filter_lexer import FilterLexer, FilterTokenType
+from parsers.lexer.filter_lexer import FilterLexer, FilterTokenType
 from core.error_types import FFmpegError, ErrorLevel
 from parsers.semantic_analyzer import SemanticAnalyzer
-from parsers.parser_models import ParsedCommand, Stream
+from parsers.parser_models import ParsedCommand, Stream, FilterNode, FilterChain
 
 class FilterParser:
     def __init__(self):
-        self.current_streams = []  # 用于追踪当前流的上下文
+        self.current_pos = 0
+        self.text = ""
 
-    def parse(self, text: str) -> ParsedCommand:
-        lexer = FilterLexer(text)
-        tokens = lexer.tokenize()
-        parsed_command = ParsedCommand(
-            inputs=[],
-            outputs=[],
-            global_options={},
-            filter_chains=[]
-        )
-        current_chain = []
-        current_label = None
+    def parse(self, text):
+        """解析滤镜链文本"""
+        try:
+            self.text = text
+            self.current_pos = 0
+            
+            streams = []
+            filter_chains = []
+            
+            # 解析流标签和滤镜
+            while self.current_pos < len(text):
+                # 解析输入流标签
+                input_streams = []
+                while self.peek() == '[':
+                    stream = self._parse_stream_label()
+                    input_streams.append(stream["id"])
+                    streams.append(Stream(**stream))
 
-        while tokens:
-            token_type, value = tokens.pop(0)
+                # 解析滤镜名称和参数
+                filter_name, params = self._parse_filter()
+                
+                # 解析输出流标签
+                output_stream = None
+                if self.peek() == '[':
+                    output_stream = self._parse_stream_label()
+                    streams.append(Stream(**output_stream))
 
-            # 处理流标签定义（如 [0:v]）
-            if token_type == FilterTokenType.LBRACKET:
-                label = self._parse_stream_label(tokens)
-                current_label = label
+                # 添加到滤镜链
+                filter_chains.append(FilterChain(
+                    inputs=input_streams,
+                    output=output_stream["id"] if output_stream else None,
+                    filters=[{"name": filter_name, "params": params}]
+                ))
 
-            # 处理滤镜链分隔符（;）
-            elif token_type == FilterTokenType.SEMICOLON:
-                if current_chain:
-                    parsed_command.filter_chains.append(current_chain)
-                    current_chain = []
+                # 跳过分隔符
+                if self.peek() == ';':
+                    self.current_pos += 1
 
-            # 处理滤镜表达式（如 scale=iw/2:ih/2）
-            elif token_type == FilterTokenType.EXPRESSION:
-                if "=" in value:
-                    name, param_str = value.split("=", 1)
-                    params = self._parse_params(tokens)
-                    filter_node = FilterNode(
-                        name=name,
-                        params=params,
-                        inputs=self._get_inputs(),  # 根据上下文获取输入流
-                        outputs=[Stream(type="v", label=current_label)] if current_label else []
-                    )
-                    current_chain.append(filter_node)
-                    current_label = None  # 重置标签
+            return ParsedCommand(streams=streams, filter_chains=filter_chains)
 
-        return parsed_command
+        except Exception as e:
+            if not isinstance(e, FFmpegError):
+                raise FFmpegError(
+                    message=str(e),
+                    error_type="PARSER_ERROR",
+                    suggestion="请检查滤镜链语法是否正确"
+                )
+            raise
 
-    def _parse_stream_label(self, tokens: list) -> str:
-        """解析流标签（如 [0:v] -> 0:v）"""
-        label_tokens = []
-        while tokens and tokens[0][0] != FilterTokenType.RBRACKET:
-            _, value = tokens.pop(0)
-            label_tokens.append(value)
-        tokens.pop(0)  # 移除右括号 ]
-        return "".join(label_tokens)
+    def _parse_stream_label(self):
+        """解析流标签 [label]"""
+        if self.text[self.current_pos] != '[':
+            raise FFmpegError(
+                message="括号不匹配",
+                error_type="PARSER_ERROR",
+                suggestion="检查是否有未闭合的括号"
+            )
+        
+        self.current_pos += 1
+        label = ''
+        
+        while self.current_pos < len(self.text) and self.text[self.current_pos] != ']':
+            label += self.text[self.current_pos]
+            self.current_pos += 1
+            
+        if self.current_pos >= len(self.text) or self.text[self.current_pos] != ']':
+            raise FFmpegError(
+                message="括号不匹配",
+                error_type="PARSER_ERROR",
+                suggestion="检查是否有未闭合的括号"
+            )
+            
+        self.current_pos += 1
+        return {"id": label, "type": "video" if ":v" in label else "audio"}
 
-    def _parse_params(self, tokens: list) -> Dict[str, str]:
-        """解析参数（如 scale=iw/2:ih/2）"""
+    def _parse_filter(self):
+        """解析滤镜名称和参数"""
+        # 跳过空白字符
+        while self.current_pos < len(self.text) and self.text[self.current_pos].isspace():
+            self.current_pos += 1
+
+        name = ''
+        # 解析滤镜名称
+        while (self.current_pos < len(self.text) and 
+               (self.text[self.current_pos].isalnum() or self.text[self.current_pos] == '_')):
+            name += self.text[self.current_pos]
+            self.current_pos += 1
+            
+        if not name:
+            # 检查是否在流标签后面
+            if self.current_pos > 0 and self.text[self.current_pos - 1] == ']':
+                name = 'scale'  # 默认滤镜
+            else:
+                raise FFmpegError(
+                    message="缺少滤镜名称",
+                    error_type="PARSER_ERROR",
+                    suggestion="请指定有效的滤镜名称"
+                )
+            
+        # 解析参数
         params = {}
-        param_str = ""
+        if self.peek() == '=':
+            self.current_pos += 1
+            if name == 'format':
+                # 特殊处理 format 滤镜
+                params = self._parse_format_params()
+            else:
+                params = self._parse_parameters()
+        elif name == 'scale':
+            # 为scale滤镜添加默认参数
+            params = {"width": "iw", "height": "ih"}
+        
+        return name, params
+
+    def _parse_format_params(self):
+        """特殊处理 format 滤镜的参数"""
+        params = {}
+        value = ''
+        
+        # 跳过空白字符
+        while self.current_pos < len(self.text) and self.text[self.current_pos].isspace():
+            self.current_pos += 1
+        
+        # 收集到下一个分隔符前的所有字符
+        while (self.current_pos < len(self.text) and 
+               self.text[self.current_pos] not in '[];,'):
+            value += self.text[self.current_pos]
+            self.current_pos += 1
+        
+        if value:
+            params['pix_fmt'] = value.strip()
+        
+        return params
+
+    def _parse_parameters(self):
+        """解析滤镜参数"""
+        params = {}
+        while self.current_pos < len(self.text):
+            # 跳过空白字符
+            while self.current_pos < len(self.text) and self.text[self.current_pos].isspace():
+                self.current_pos += 1
+            
+            # 获取参数名或值
+            value = ''
+            while (self.current_pos < len(self.text) and 
+                   self.text[self.current_pos] not in '[];,: \t\n'):
+                value += self.text[self.current_pos]
+                self.current_pos += 1
+            
+            if not value:
+                break
+            
+            # 处理 scale=1280:720 这样的简写格式
+            if value.isdigit():
+                if len(params) == 0:
+                    params["width"] = value
+                else:
+                    params["height"] = value
+                # 跳过冒号
+                if self.peek() == ':':
+                    self.current_pos += 1
+                continue
+            
+            # 处理常规 key=value 格式
+            if self.peek() == '=':
+                self.current_pos += 1
+                param_name = value
+                param_value = ''
+                while (self.current_pos < len(self.text) and 
+                       self.text[self.current_pos] not in '[];,'):
+                    param_value += self.text[self.current_pos]
+                    self.current_pos += 1
+                params[param_name] = param_value.strip()
+            
+            # 跳过分隔符
+            if self.peek() == ',':
+                self.current_pos += 1
+            
+        return params
+
+    def peek(self):
+        """查看下一个字符"""
+        return self.text[self.current_pos] if self.current_pos < len(self.text) else None
+
+    def _parse_complex_label(self, tokens):
+        """解析复合流标签（如 [0:v]overlay[x]）"""
+        self._label_stack.append([])
         while tokens:
             token_type, value = tokens[0]
-            if token_type in (FilterTokenType.EXPRESSION, FilterTokenType.NUMBER, FilterTokenType.STRING, FilterTokenType.COLON):
+            if token_type == FilterTokenType.RBRACKET and len(self._label_stack) == 1:
+                break
+            # ... 解析逻辑
+        return ''.join(self._label_stack.pop())
+
+    def _parse_params(self, tokens: list) -> Dict[str, str]:
+        """解析参数（如 scale=width=640:height=360）"""
+        params = {}
+        param_str = ""
+        
+        # 收集所有参数相关token（包括表达式、数字、字符串、冒号和等号）
+        while tokens:
+            token_type, value = tokens[0]
+            if token_type in (
+                FilterTokenType.EXPRESSION,
+                FilterTokenType.NUMBER,
+                FilterTokenType.STRING,
+                FilterTokenType.COLON,
+                FilterTokenType.EQUAL  # 关键修复：包含等号
+            ):
                 param_str += value
                 tokens.pop(0)
             else:
                 break
-        param_list = param_str.split(":")
-        for param in param_list:
-            if "=" in param:
-                key, value = param.split("=", 1)
+        
+        # 分割参数对
+        param_pairs = param_str.split(":")
+        for pair in param_pairs:
+            if "=" in pair:
+                key_value_pairs = pair.split("=")
+                key = key_value_pairs[0].strip()
+                value = "=".join(key_value_pairs[1:]).strip()  # 处理多个等号的情况
                 params[key] = value
+    
         return params
 
     def _get_inputs(self) -> List[Stream]:

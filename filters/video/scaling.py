@@ -49,3 +49,6 @@ class ScaleFilter:
             impl = self.spec.gpu_mapping.replace("{hw}", hw_accel)
             return f"{impl}=w={self.params.width}:h={self.params.height}"
         return f"scale=w={self.params.width}:h={self.params.height}:flags={self.params.flags}"
+
+# 确保导出类
+__all__ = ['ScaleFilter']

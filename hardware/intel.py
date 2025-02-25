@@ -1,6 +1,13 @@
-
+import os
+import sys
+import logging
+import subprocess
+from typing import Dict, Optional
+from core.error_types import FFmpegError, ErrorType
 
 class IntelQSVAccelerator:
+    """Intel QSV 加速器"""
+    
     SUPPORTED_FILTERS = {
         'scale': {
             'impl': 'scale_qsv',
@@ -14,13 +21,20 @@ class IntelQSVAccelerator:
     }
 
     def __init__(self):
+        self.video_codec = "h264_qsv"
+        self.device_id = 0
         self._check_driver()
-        self._devices = self._get_qsv_devices()
-
+        
     def is_available(self) -> bool:
-        return len(self._devices) > 0
+        """检查是否可用QSV加速"""
+        try:
+            self._check_driver()
+            return True
+        except FFmpegError:
+            return False
 
-    def optimize_filter(self, filter_str: str) -> str:
+    def optimize_filter(self, filter_str: str) -> Optional[str]:
+        """优化滤镜命令"""
         name, params = self._parse_filter(filter_str)
         if spec := self.SUPPORTED_FILTERS.get(name):
             param_mapping = ":".join(
@@ -32,6 +46,7 @@ class IntelQSVAccelerator:
         return None
 
     def _parse_filter(self, filter_str: str) -> tuple:
+        """解析滤镜字符串"""
         if '=' in filter_str:
             name, param_part = filter_str.split('=', 1)
             params = dict(p.split('=') for p in param_part.split(':'))
@@ -39,7 +54,8 @@ class IntelQSVAccelerator:
             name, params = filter_str, {}
         return name.strip(), params
 
-    def _check_driver(self):
+    def _check_driver(self) -> None:
+        """检查驱动是否可用"""
         try:
             output = subprocess.check_output(
                 ["vainfo"], 
@@ -48,26 +64,13 @@ class IntelQSVAccelerator:
             )
             if "iHD" not in output:
                 raise FFmpegError(
-                    code="QSV_DRIVER_MISSING",
-                    message="Intel iHD驱动未安装",
-                    suggestion="安装intel-media-va-driver",
-                    level=ErrorLevel.CRITICAL
+                    "Intel iHD驱动未安装",
+                    error_type=ErrorType.DRIVER_MISSING,
+                    suggestion="安装intel-media-va-driver"
                 )
         except FileNotFoundError:
             raise FFmpegError(
-                code="VAAPI_UNAVAILABLE",
-                message="未检测到VAAPI支持",
-                suggestion="安装vainfo和intel-media-va-driver",
-                level=ErrorLevel.CRITICAL
+                "未检测到VAAPI支持",
+                error_type=ErrorType.HARDWARE_UNAVAILABLE,
+                suggestion="安装vainfo和intel-media-va-driver"
             )
-
-    def _get_qsv_devices(self) -> list:
-        try:
-            output = subprocess.check_output(
-                ["ls /dev/dri/renderD*"], 
-                shell=True, 
-                text=True
-            )
-            return output.strip().split()
-        except subprocess.CalledProcessError:
-            return []

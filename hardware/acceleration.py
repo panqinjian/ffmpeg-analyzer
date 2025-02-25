@@ -4,8 +4,12 @@ import logging
 import inspect
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Union
+from core.error_types import FFmpegError, ErrorType
+from hardware.nvidia import CUDAAccelerator
+from hardware.intel import IntelQSVAccelerator
 
 class AccelerationManager:
+    """硬件加速管理器"""
     PRIORITY = ['cuda', 'qsv', 'vaapi']
 
     def __init__(self):
@@ -45,3 +49,6 @@ class AccelerationManager:
 
     def get_current_accelerator(self) -> str:
         return self.active_accelerator or "software"
+
+# 确保导出类
+__all__ = ['AccelerationManager']
